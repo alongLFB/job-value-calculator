@@ -12,10 +12,11 @@ import { Separator } from "@/components/ui/separator"; // 引入分隔线
 export default function Home() {
   // --- State for Input Fields ---
   const [name, setName] = useState('');
-  const [dailySalary, setDailySalary] = useState<number | ''>('');
-  const [workHours, setWorkHours] = useState<number | ''>('');
-  const [commuteHours, setCommuteHours] = useState<number | ''>('');
-  const [slackingHours, setSlackingHours] = useState<number | ''>('');
+  // Change state types to string for inputs that allow decimals
+  const [dailySalary, setDailySalary] = useState<string>('');
+  const [workHours, setWorkHours] = useState<string>('');
+  const [commuteHours, setCommuteHours] = useState<string>('');
+  const [slackingHours, setSlackingHours] = useState<string>('');
   const [educationFactor, setEducationFactor] = useState('1.0'); // 使用字符串存储Select的值
   const [workEnvFactor, setWorkEnvFactor] = useState('1.0');
   const [oppositeSexFactor, setOppositeSexFactor] = useState('1.0');
@@ -34,11 +35,13 @@ export default function Home() {
     setCostPerformance(null); // Clear previous result
 
     // --- Input Validation ---
-    const numDailySalary = Number(dailySalary);
-    const numWorkHours = Number(workHours);
-    const numCommuteHours = Number(commuteHours);
-    const numSlackingHours = Number(slackingHours);
+    // Parse string states to numbers here
+    const numDailySalary = parseFloat(dailySalary);
+    const numWorkHours = parseFloat(workHours);
+    const numCommuteHours = parseFloat(commuteHours);
+    const numSlackingHours = parseFloat(slackingHours);
 
+    // Check for NaN (which parseFloat returns for invalid or empty strings) and other conditions
     if (isNaN(numDailySalary) || numDailySalary <= 0 ||
         isNaN(numWorkHours) || numWorkHours <= 0 ||
         isNaN(numCommuteHours) || numCommuteHours < 0 || // Commute can be 0
@@ -48,32 +51,35 @@ export default function Home() {
     }
 
     // --- Calculate Effective Work Hours ---
-    const effectiveHours = numWorkHours + numCommuteHours - numSlackingHours;
+    const effectiveHours = numWorkHours + numCommuteHours - 0.5 * numSlackingHours;
     if (effectiveHours <= 0) {
        setCostPerformance(99999); // 给一个象征性的高分
        return;
     }
 
     const numOverallEnvFactor = parseFloat(overallEnvFactor);
+    const numEducationFactor = parseFloat(educationFactor);
+    const numWorkEnvFactor = parseFloat(workEnvFactor);
+    const numOppositeSexFactor = parseFloat(oppositeSexFactor);
+    const numColleagueFactor = parseFloat(colleagueFactor);
+    const numQualificationFactor = parseFloat(qualificationFactor);
+    const before830Penalty = before830 ? 0.95 : 1.0; // 示例：8:30前上班稍微降低系数
 
     // --- Final Calculation (Using your placeholder formula) ---
     // 性价比 = (平均日薪酬 / (工作时长 + 通勤时长 - 摸鱼时长)) * 综合环境系数
-    let result = (numDailySalary / effectiveHours) * numOverallEnvFactor;
-
-    // 考虑 8:30前上班 的影响
-    if (before830) {
-      result *= 0.95; // 举例：早起扣一点分 (或者你可以定义一个惩罚系数)
-    }
+    let result = (numDailySalary / effectiveHours) * numOverallEnvFactor * numEducationFactor * numWorkEnvFactor * numOppositeSexFactor * numColleagueFactor * numQualificationFactor * before830Penalty;
 
     setCostPerformance(result);
   };
 
   // --- Helper function for number input change ---
-  const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<number | ''>>) =>
+  // Adjust setter type to expect string and set the value directly
+  const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
+        // Allow empty string or valid decimal format (including intermediate states like "0." or ".")
         if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-             setter(value === '' ? '' : parseFloat(value));
+             setter(value); // Set the string value directly
         }
     };
 
@@ -103,23 +109,86 @@ export default function Home() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="dailySalary" className="flex items-center">平均日薪酬 (元) <span className="text-red-500 ml-1">*</span></Label>
-                <Input id="dailySalary" type="text" inputMode="decimal" placeholder="例如 300" value={dailySalary} onChange={handleNumberChange(setDailySalary)} min="0" step="any" />
+                {/* No changes needed here for the Input component itself */}
+                <Input id="dailySalary" type="text" inputMode="decimal" placeholder="例如 300" value={dailySalary} onChange={handleNumberChange(setDailySalary)} />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="workHours" className="flex items-center">工作时长 (小时/天) <span className="text-red-500 ml-1">*</span></Label>
-                <Input id="workHours" type="text" inputMode="decimal" placeholder="例如 8" value={workHours} onChange={handleNumberChange(setWorkHours)} min="0" step="any"/>
+                 {/* No changes needed here for the Input component itself */}
+                <Input id="workHours" type="text" inputMode="decimal" placeholder="例如 8" value={workHours} onChange={handleNumberChange(setWorkHours)} />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="commuteHours" className="flex items-center">通勤时长 (小时/天) <span className="text-red-500 ml-1">*</span></Label>
-                <Input id="commuteHours" type="text" inputMode="decimal" placeholder="例如 1.5" value={commuteHours} onChange={handleNumberChange(setCommuteHours)} min="0" step="any"/>
+                 {/* No changes needed here for the Input component itself */}
+                <Input id="commuteHours" type="text" inputMode="decimal" placeholder="例如 1.5" value={commuteHours} onChange={handleNumberChange(setCommuteHours)} />
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="slackingHours" className="flex items-center">摸鱼时长 (小时/天) <span className="text-red-500 ml-1">*</span></Label>
-                <Input id="slackingHours" type="text" inputMode="decimal" placeholder="例如 2" value={slackingHours} onChange={handleNumberChange(setSlackingHours)} min="0" step="any"/>
+                 {/* No changes needed here for the Input component itself */}
+                <Input id="slackingHours" type="text" inputMode="decimal" placeholder="例如 2" value={slackingHours} onChange={handleNumberChange(setSlackingHours)} />
               </div>
+
+              {/* --- 其他系数 (暂时隐藏，按需启用或集成到综合系数中) --- */}
+              
+              <div className="space-y-1">
+                <Label htmlFor="educationFactor">学历系数</Label>
+                 <Select value={educationFactor} onValueChange={setEducationFactor}>
+                   <SelectTrigger id="educationFactor"><SelectValue placeholder="选择系数" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="0.9">高中及以下</SelectItem>
+                     <SelectItem value="1.0">大专/本科</SelectItem>
+                     <SelectItem value="1.1">硕士</SelectItem>
+                     <SelectItem value="1.2">博士</SelectItem>
+                   </SelectContent>
+                 </Select>
+              </div>
+               <div className="space-y-1">
+                 <Label htmlFor="workEnvFactor">工作环境系数</Label>
+                 <Select value={workEnvFactor} onValueChange={setWorkEnvFactor}>
+                   <SelectTrigger id="workEnvFactor"><SelectValue placeholder="选择系数" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="0.8">压抑</SelectItem>
+                     <SelectItem value="1.0">正常</SelectItem>
+                     <SelectItem value="1.2">舒适</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+                <div className="space-y-1">
+                 <Label htmlFor="oppositeSexFactor">异性环境系数</Label>
+                 <Select value={oppositeSexFactor} onValueChange={setOppositeSexFactor}>
+                   <SelectTrigger id="oppositeSexFactor"><SelectValue placeholder="选择系数" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="0.9">几乎没有</SelectItem>
+                     <SelectItem value="1.0">有一些</SelectItem>
+                     <SelectItem value="1.1">挺多的</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+               <div className="space-y-1">
+                 <Label htmlFor="colleagueFactor">同事环境系数</Label>
+                 <Select value={colleagueFactor} onValueChange={setColleagueFactor}>
+                   <SelectTrigger id="colleagueFactor"><SelectValue placeholder="选择系数" /></SelectTrigger>
+                   <SelectContent>
+                      <SelectItem value="0.7">勾心斗角</SelectItem>
+                     <SelectItem value="1.0">各自为战</SelectItem>
+                     <SelectItem value="1.3">和谐互助</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
+               <div className="space-y-1">
+                 <Label htmlFor="qualificationFactor">职业资格系数</Label>
+                  <Select value={qualificationFactor} onValueChange={setQualificationFactor}>
+                   <SelectTrigger id="qualificationFactor"><SelectValue placeholder="选择系数" /></SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="1.0">无要求/通用</SelectItem>
+                     <SelectItem value="1.1">有加分项</SelectItem>
+                     <SelectItem value="1.2">硬性要求/稀缺</SelectItem>
+                   </SelectContent>
+                 </Select>
+               </div>
 
               <div className="space-y-1.5">
                  <Label htmlFor="overallEnvFactor">综合环境系数 (主观)</Label>
@@ -161,6 +230,7 @@ export default function Home() {
           </form>
         </CardContent>
 
+        {/* ... rest of the component ... */}
         {(costPerformance !== null || errorMsg) && (
           <CardFooter className="flex flex-col items-center pt-6 border-t mt-4">
             {errorMsg && (
