@@ -67,7 +67,7 @@ export default function Home() {
 
     // --- Final Calculation (Using your placeholder formula) ---
     // 性价比 = (平均日薪酬 / (工作时长 + 通勤时长 - 摸鱼时长)) * 综合环境系数
-    let result = (numDailySalary / effectiveHours) * numOverallEnvFactor * numEducationFactor * numWorkEnvFactor * numOppositeSexFactor * numColleagueFactor * numQualificationFactor * before830Penalty;
+    const result = (numDailySalary / effectiveHours) * numOverallEnvFactor * numEducationFactor * numWorkEnvFactor * numOppositeSexFactor * numColleagueFactor * numQualificationFactor * before830Penalty;
 
     setCostPerformance(result);
   };
@@ -263,7 +263,7 @@ export default function Home() {
                          {costPerformance >= 100 && <p className="text-emerald-500 dark:text-emerald-400 font-semibold">卧槽！神仙班！这是碳基生物该上的班吗？速速炫耀！🤩</p>}
                     </div>
                  )}
-                 {costPerformance === 99999 && <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">摸鱼时长 >= 工作+通勤，你是懂上班的！摸鱼之神！🏆</p>}
+                 {costPerformance === 99999 && <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">摸鱼时长 大于 工作+通勤，你是懂上班的！摸鱼之神！🏆</p>}
               </div>
             )}
           </CardFooter>
