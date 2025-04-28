@@ -171,9 +171,10 @@ export default function Home() {
       const qrSize = 216; // Desired size of QR code on the image
       const padding = 20; // Padding from edges
       const wechatqrSize = 216;
+      const textHeightEstimate = 25;
 
       combinedCanvas.width = canvas.width;
-      combinedCanvas.height = canvas.height + wechatqrSize + padding * 2; 
+      combinedCanvas.height = canvas.height + wechatqrSize + textHeightEstimate + padding * 2; 
 
       // Fill the entire combined canvas with white first (optional, but good practice)
       ctx.fillStyle = '#ffffff';
@@ -184,13 +185,25 @@ export default function Home() {
 
       // Draw the QR code in the bottom right
       // Ensure qrCodeRef.current is loaded and valid
+      // --- Draw Website QR (Right Bottom) ---
+      const websiteQrY = canvas.height + padding;
+      const websiteQrX = combinedCanvas.width - qrSize - padding;
       if (qrCodeRef.current.complete && qrCodeRef.current.naturalHeight !== 0) {
         ctx.drawImage(
           qrCodeRef.current,
-          canvas.width - qrSize - padding, // x position
-          canvas.height - padding, // y position
-          qrSize, // width
-          qrSize // height
+          websiteQrX,
+          websiteQrY,
+          qrSize,
+          qrSize
+        );
+        // Draw text below Website QR
+        ctx.fillStyle = '#555555'; // Text color
+        ctx.font = '14px Arial'; // Text font
+        ctx.textAlign = 'center'; // Center align text
+        ctx.fillText(
+          '我也来测测',
+          websiteQrX + qrSize / 2, // Center X below QR
+          websiteQrY + qrSize + 15  // Y position below QR + gap
         );
       } else {
         console.warn(
@@ -201,13 +214,26 @@ export default function Home() {
 
       // Draw the wechat QR code in the bottom right
       // Ensure qrCodeRef.current is loaded and valid
+
+      // --- Draw Coffee QR (Left Bottom) ---
+      const coffeeQrY = canvas.height + padding;
+      const coffeeQrX = padding;
       if (wechatqrCodeRef.current && wechatqrCodeRef.current.complete && wechatqrCodeRef.current.naturalHeight !== 0) {
         ctx.drawImage(
           wechatqrCodeRef.current,
-          padding, // x position
-          canvas.height - padding, // y position
-          wechatqrSize, // width
-          wechatqrSize // height
+          coffeeQrX,
+          coffeeQrY,
+          qrSize,
+          qrSize
+        );
+        // Draw text below Coffee QR
+        ctx.fillStyle = '#555555'; // Text color
+        ctx.font = '14px Arial'; // Text font
+        ctx.textAlign = 'center'; // Center align text
+        ctx.fillText(
+          '请喝杯咖啡☕️',
+          coffeeQrX + qrSize / 2, // Center X below QR
+          coffeeQrY + qrSize + 15  // Y position below QR + gap
         );
       } else {
         console.warn(
