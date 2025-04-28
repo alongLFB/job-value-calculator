@@ -1,13 +1,15 @@
-'use client'; // <--- 标记为客户端组件，因为我们需要 useState 和事件处理
+'use client';
 
 import { useState } from 'react';
+import Image from 'next/image'; // Import Next.js Image component
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator"; // 引入分隔线
+import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
 
 export default function Home() {
   // --- State for Input Fields ---
@@ -65,28 +67,28 @@ export default function Home() {
     const numQualificationFactor = parseFloat(qualificationFactor);
     const before830Penalty = before830 ? 0.95 : 1.0; // 示例：8:30前上班稍微降低系数
 
-    // --- Final Calculation (Using your placeholder formula) ---
-    // 性价比 = (平均日薪酬 / (工作时长 + 通勤时长 - 摸鱼时长)) * 综合环境系数
+    // --- Final Calculation ---
+    // 性价比 = (平均日薪酬 / 有效工作时间) * 各种系数乘积
     const result = (numDailySalary / effectiveHours) * numOverallEnvFactor * numEducationFactor * numWorkEnvFactor * numOppositeSexFactor * numColleagueFactor * numQualificationFactor * before830Penalty;
 
     setCostPerformance(result);
   };
 
   // --- Helper function for number input change ---
-  // Adjust setter type to expect string and set the value directly
   const handleNumberChange = (setter: React.Dispatch<React.SetStateAction<string>>) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
-        // Allow empty string or valid decimal format (including intermediate states like "0." or ".")
         if (value === '' || /^[0-9]*\.?[0-9]*$/.test(value)) {
-             setter(value); // Set the string value directly
+             setter(value);
         }
     };
 
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800">
-      <Card className="w-full max-w-3xl mb-6 shadow-xl transform hover:scale-105 transition-transform duration-300">
+    // Add padding-bottom to main to ensure footer doesn't overlap content on small screens
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8 pb-20 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800 relative"> {/* Added pb-20 and relative */}
+      {/* ... (keep existing Card for Title) ... */}
+       <Card className="w-full max-w-3xl mb-6 shadow-xl transform hover:scale-105 transition-transform duration-300">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 dark:from-purple-400 dark:via-pink-400 dark:to-orange-400">
             这 <span className="inline-block transform rotate-[-5deg] animate-bounce text-red-600 dark:text-red-500">B</span> 班上的值不值测算版
@@ -97,6 +99,7 @@ export default function Home() {
         </CardHeader>
       </Card>
 
+      {/* ... (keep existing Card for Form and Results) ... */}
       <Card className="w-full max-w-3xl shadow-lg">
         <CardContent className="pt-6">
           <form onSubmit={(e) => { e.preventDefault(); calculateValue(); }}>
@@ -229,8 +232,6 @@ export default function Home() {
             </div>
           </form>
         </CardContent>
-
-        {/* ... rest of the component ... */}
         {(costPerformance !== null || errorMsg) && (
           <CardFooter className="flex flex-col items-center pt-6 border-t mt-4">
             {errorMsg && (
@@ -264,11 +265,41 @@ export default function Home() {
                     </div>
                  )}
                  {costPerformance === 99999 && <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">摸鱼时长 大于 工作+通勤，你是懂上班的！摸鱼之神！🏆</p>}
+
+                 <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">如果你觉得这个<span className="inline-block transform rotate-[-5deg] animate-bounce text-blue-600 dark:text-blue-500">有趣</span> 请赏一杯<span className="inline-block transform rotate-[-5deg] animate-bounce text-red-600 dark:text-red-500">咖啡</span>☕️ 谢谢老板！</p>
+
+                <div className="mt-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="link" size="sm" className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 p-0 h-auto underline">
+                      点击这里 请我喝杯咖啡 ☕
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-1">
+                    {/* Replace with your actual QR code image */}
+                    {/* Make sure the image is in the /public folder */}
+                    <Image
+                      src="https://imgbed.alonglfb.com/file/1745834277141_alipay.png" // <-- IMPORTANT: Update this path
+                      alt="Buy me a coffee QR Code"
+                      width={200} // Adjust size as needed
+                      height={200} // Adjust size as needed
+                      className="rounded"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
               </div>
             )}
           </CardFooter>
         )}
       </Card>
+
+      {/* --- Footer --- */}
+      <footer className="absolute bottom-0 left-0 right-0 p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+        <p>© {new Date().getFullYear()} Along Li. All Rights Reserved.</p>
+        <p>Made with ❤️ by Along Li</p>
+      </footer>
     </main>
   );
 }
