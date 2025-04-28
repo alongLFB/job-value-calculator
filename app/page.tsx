@@ -56,6 +56,8 @@ export default function Home() {
   // Ref for the QR code image (preloaded)
   const qrCodeRef = useRef<HTMLImageElement>(null);
 
+  const wechatqrCodeRef = useRef<HTMLImageElement>(null);
+
   // --- Calculation Logic ---
   const calculateValue = () => {
     setErrorMsg(null); // Clear previous errors
@@ -166,11 +168,12 @@ export default function Home() {
       const ctx = combinedCanvas.getContext("2d");
       if (!ctx) throw new Error("Could not get canvas context");
 
-      const qrSize = 100; // Desired size of QR code on the image
+      const qrSize = 216; // Desired size of QR code on the image
       const padding = 20; // Padding from edges
+      const wechatqrSize = 216;
 
       combinedCanvas.width = canvas.width;
-      combinedCanvas.height = canvas.height + qrSize + padding * 2; 
+      combinedCanvas.height = canvas.height + wechatqrSize + padding * 2; 
 
       // Fill the entire combined canvas with white first (optional, but good practice)
       ctx.fillStyle = '#ffffff';
@@ -188,6 +191,23 @@ export default function Home() {
           canvas.height - padding, // y position
           qrSize, // width
           qrSize // height
+        );
+      } else {
+        console.warn(
+          "QR code image not fully loaded or invalid, skipping draw."
+        );
+        // Optionally draw a placeholder or skip
+      }
+
+      // Draw the wechat QR code in the bottom right
+      // Ensure qrCodeRef.current is loaded and valid
+      if (wechatqrCodeRef.current && wechatqrCodeRef.current.complete && wechatqrCodeRef.current.naturalHeight !== 0) {
+        ctx.drawImage(
+          wechatqrCodeRef.current,
+          padding, // x position
+          canvas.height - padding, // y position
+          wechatqrSize, // width
+          wechatqrSize // height
         );
       } else {
         console.warn(
@@ -271,6 +291,15 @@ export default function Home() {
         width={100} // Actual size doesn't matter much here, just needs to load
         height={100}
         style={{ position: "absolute", left: "-9999px", top: "-9999px" }} // Hide it off-screen
+        priority // Load it eagerly
+      />
+      <Image
+        ref={wechatqrCodeRef}
+        src="https://imgbed.alonglfb.com/file/1745844530680_wechat_pay2.jpg" // <-- IMPORTANT: Update this path
+        alt="Job Value wechat QR Code"
+        width={100} // Actual size doesn't matter much here, just needs to load
+        height={100}
+        style={{ position: "absolute", left: "-99999px", top: "-99999px" }} // Hide it off-screen
         priority // Load it eagerly
       />
       {/* ... (keep existing Card for Title) ... */}
