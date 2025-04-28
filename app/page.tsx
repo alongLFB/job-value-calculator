@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image"; // Import Next.js Image component
+import * as htmlToImage from "html-to-image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,6 +48,13 @@ export default function Home() {
   // --- State for Calculation Result ---
   const [costPerformance, setCostPerformance] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [isSharing, setIsSharing] = useState(false); // State for loading indicator
+
+  // Ref for the results area to screenshot
+  const resultsRef = useRef<HTMLDivElement>(null);
+  // Ref for the QR code image (preloaded)
+  const qrCodeRef = useRef<HTMLImageElement>(null);
 
   // --- Calculation Logic ---
   const calculateValue = () => {
@@ -133,11 +141,138 @@ export default function Home() {
       }
     };
 
+  // --- Share Function ---
+  const handleShare = async () => {
+    if (!resultsRef.current || !qrCodeRef.current) {
+      console.error("Results or QR code element not found");
+      alert("无法生成分享图片，请稍后再试。");
+      return;
+    }
+    if (isSharing) return;
+
+    setIsSharing(true);
+    try {
+      // 1. Capture the results area using html-to-image
+      const canvas = await htmlToImage.toCanvas(resultsRef.current, {
+        // Options for html-to-image (adjust as needed)
+        quality: 1.0, // Set quality (0 to 1)
+        pixelRatio: 2, // Increase pixel ratio for better resolution
+        backgroundColor: '#ffffff', // Explicit background if needed
+        // You might not need specific workarounds for oklch here
+      });
+
+      // 2. Create a new canvas to combine screenshot and QR code
+      const combinedCanvas = document.createElement("canvas");
+      const ctx = combinedCanvas.getContext("2d");
+      if (!ctx) throw new Error("Could not get canvas context");
+
+      const qrSize = 100; // Desired size of QR code on the image
+      const padding = 20; // Padding from edges
+
+      combinedCanvas.width = canvas.width;
+      combinedCanvas.height = canvas.height + qrSize + padding * 2; 
+
+      // Fill the entire combined canvas with white first (optional, but good practice)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
+
+      // Draw the original screenshot
+      ctx.drawImage(canvas, 0, 0);
+
+      // Draw the QR code in the bottom right
+      // Ensure qrCodeRef.current is loaded and valid
+      if (qrCodeRef.current.complete && qrCodeRef.current.naturalHeight !== 0) {
+        ctx.drawImage(
+          qrCodeRef.current,
+          canvas.width - qrSize - padding, // x position
+          canvas.height - padding, // y position
+          qrSize, // width
+          qrSize // height
+        );
+      } else {
+        console.warn(
+          "QR code image not fully loaded or invalid, skipping draw."
+        );
+        // Optionally draw a placeholder or skip
+      }
+
+      // 3. Convert canvas to Blob
+      combinedCanvas.toBlob(async (blob) => {
+        if (!blob) {
+          throw new Error("Canvas to Blob conversion failed");
+        }
+
+        try {
+          // 4. Attempt to use Web Share API
+          const file = new File([blob], "job-value-result.png", {
+            type: "image/png",
+          });
+          const shareData = {
+            files: [file],
+            title: "我的上班性价比测算结果！",
+            text: `快来看看我的上班性价比指数：${costPerformance?.toFixed(
+              2
+            )}！你也来测测？`,
+          };
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            // Check specifically for file sharing
+            await navigator.share(shareData);
+          } else {
+            // Fallback: Download the image
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "job-value-result.png";
+            document.body.appendChild(link); // Append link to body for Firefox compatibility
+            link.click();
+            document.body.removeChild(link); // Clean up link
+            URL.revokeObjectURL(link.href); // Clean up blob URL
+          }
+        } catch (err) {
+          console.error("Sharing failed:", err);
+          // Fallback if sharing specific file fails but API exists
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "job-value-result.png";
+          document.body.appendChild(link); // Append link to body for Firefox compatibility
+          link.click();
+          document.body.removeChild(link); // Clean up link
+          URL.revokeObjectURL(link.href); // Clean up blob URL
+          alert("分享功能出错或浏览器不支持，已尝试为您下载图片。");
+        } finally {
+          setIsSharing(false);
+        }
+      }, "image/png");
+    } catch (error) {
+      console.error("Error generating share image:", error);
+      // Check if the error is from html-to-image specifically
+      if (error instanceof Error && error.message.includes("color function")) {
+        alert(
+          `生成图片失败：无法解析颜色 "${
+            error.message.split('"')[1]
+          }". 请尝试简化样式或检查浏览器兼容性。`
+        );
+      } else {
+        alert("生成分享图片时出错，请稍后再试。");
+      }
+      setIsSharing(false);
+    }
+  };
+
   return (
     // Add padding-bottom to main to ensure footer doesn't overlap content on small screens
     <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-8 pb-20 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:from-gray-900 dark:via-purple-900 dark:to-gray-800 relative">
       {" "}
       {/* Added pb-20 and relative */}
+      <Image
+        ref={qrCodeRef}
+        src="https://imgbed.alonglfb.com/file/1745839021490_jobvalue_qr.png" // <-- IMPORTANT: Update this path
+        alt="Job Value QR Code"
+        width={100} // Actual size doesn't matter much here, just needs to load
+        height={100}
+        style={{ position: "absolute", left: "-9999px", top: "-9999px" }} // Hide it off-screen
+        priority // Load it eagerly
+      />
       {/* ... (keep existing Card for Title) ... */}
       <Card className="w-full max-w-3xl mb-6 shadow-xl transform hover:scale-105 transition-transform duration-300">
         <CardHeader className="text-center">
@@ -384,103 +519,105 @@ export default function Home() {
             )}
             {costPerformance !== null && !errorMsg && (
               <div className="text-center space-y-2 w-full">
-                <p className="text-lg text-gray-700 dark:text-gray-300">
-                  喂{" "}
-                  <span className="font-semibold text-purple-700 dark:text-purple-400">
-                    {name || "靓仔/靓女"}
-                  </span>
-                  , 你的上班性价比指数是：
-                </p>
-                <div className="relative inline-block">
-                  <p className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 animate-pulse">
-                    {costPerformance === 99999
-                      ? "摸鱼™爽翻天"
-                      : costPerformance.toFixed(2)}
-                  </p>
-                  {costPerformance !== 99999 && (
-                    <span className="absolute -top-2 -right-4 text-xs bg-yellow-400 text-yellow-800 px-1.5 py-0.5 rounded-full shadow transform -rotate-12">
-                      {/* Updated Tier Labels */}
-                      {costPerformance < 10
-                        ? "🆘"
-                        : costPerformance < 30
-                        ? "危"
-                        : costPerformance < 50
-                        ? "忍"
-                        : costPerformance < 70
-                        ? "平"
-                        : costPerformance < 90
-                        ? "可"
-                        : costPerformance < 120
-                        ? "赚"
-                        : costPerformance < 150
-                        ? "神"
-                        : "仙"}
+                <div ref={resultsRef} className="p-4 bg-white dark:bg-gray-900 rounded-lg shadow-md">
+                  <p className="text-lg text-gray-700 dark:text-gray-300">
+                    喂{" "}
+                    <span className="font-semibold text-purple-700 dark:text-purple-400">
+                      {name || "靓仔/靓女"}
                     </span>
-                  )}
-                </div>
-
-                <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
-                  (指数越高，代表单位有效时间回报和环境满意度越高。仅供娱乐，切勿当真哦！)
-                </p>
-                {costPerformance !== null && costPerformance !== 99999 && (
-                  <div className="pt-2 text-sm">
-                    {/* Updated Detailed Descriptions */}
-                    {costPerformance < 10 && (
-                      <p className="text-red-700 dark:text-red-500 font-semibold">
-                        地狱模式 🆘:
-                        这性价比...是在做慈善吗？老板PUA大师？赶紧跑路，别回头！
-                      </p>
-                    )}
-                    {costPerformance >= 10 && costPerformance < 30 && (
-                      <p className="text-red-600 dark:text-red-400 font-semibold">
-                        劝退警告 📉:
-                        付出与回报严重失衡！建议把简历挂出去看看机会，别耽误青春。
-                      </p>
-                    )}
-                    {costPerformance >= 30 && costPerformance < 50 && (
-                      <p className="text-orange-600 dark:text-orange-400 font-semibold">
-                        忍辱负重 😩:
-                        食之无味，弃之可惜。为了生活，先忍着吧，记得按时下班。
-                      </p>
-                    )}
-                    {costPerformance >= 50 && costPerformance < 70 && (
-                      <p className="text-yellow-600 dark:text-yellow-400 font-semibold">
-                        勉强及格 🤷:
-                        不好不坏，比上不足比下有余。适合佛系躺平，偶尔摸鱼。
-                      </p>
-                    )}
-                    {costPerformance >= 70 && costPerformance < 90 && (
-                      <p className="text-lime-600 dark:text-lime-400 font-semibold">
-                        还算不错 👍:
-                        工作有点小盼头，性价比在线！继续努力，争取早日加薪！
-                      </p>
-                    )}
-                    {costPerformance >= 90 && costPerformance < 120 && (
-                      <p className="text-green-600 dark:text-green-400 font-semibold">
-                        小赚一笔 😏:
-                        可以啊！这班上得挺值当！工作舒心，钱包也还行，偷着乐吧！
-                      </p>
-                    )}
-                    {costPerformance >= 120 && costPerformance < 150 && (
-                      <p className="text-emerald-500 dark:text-emerald-400 font-semibold">
-                        人生赢家 😎:
-                        相当哇塞！别人是上班，你这是享受生活吧？求内推！
-                      </p>
-                    )}
-                    {costPerformance >= 150 && (
-                      <p className="text-cyan-500 dark:text-cyan-400 font-semibold">
-                        天选打工人 🙏:
-                        这是什么神仙工作？！请问贵司还缺人吗？我自带键盘！
-                      </p>
+                    , 你的上班性价比指数是：
+                  </p>
+                  <div className="relative inline-block">
+                    <p className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 animate-pulse">
+                      {costPerformance === 99999
+                        ? "摸鱼™爽翻天"
+                        : costPerformance.toFixed(2)}
+                    </p>
+                    {costPerformance !== 99999 && (
+                      <span className="absolute -top-2 -right-4 text-xs bg-yellow-400 text-yellow-800 px-1.5 py-0.5 rounded-full shadow transform -rotate-12">
+                        {/* Updated Tier Labels */}
+                        {costPerformance < 10
+                          ? "🆘"
+                          : costPerformance < 30
+                          ? "危"
+                          : costPerformance < 50
+                          ? "忍"
+                          : costPerformance < 70
+                          ? "平"
+                          : costPerformance < 90
+                          ? "可"
+                          : costPerformance < 120
+                          ? "赚"
+                          : costPerformance < 150
+                          ? "神"
+                          : "仙"}
+                      </span>
                     )}
                   </div>
-                )}
-                {costPerformance === 99999 && (
-                  <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">
-                    摸鱼之神 🏆:
-                    有效工时为负或零？你是懂时间管理的！摸鱼界的传奇！
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400 pt-1">
+                    (指数越高，代表单位有效时间回报和环境满意度越高。仅供娱乐，切勿当真哦！)
                   </p>
-                )}
+                  {costPerformance !== null && costPerformance !== 99999 && (
+                    <div className="pt-2 text-sm">
+                      {/* Updated Detailed Descriptions */}
+                      {costPerformance < 10 && (
+                        <p className="text-red-700 dark:text-red-500 font-semibold">
+                          地狱模式 🆘:
+                          这性价比...是在做慈善吗？老板PUA大师？赶紧跑路，别回头！
+                        </p>
+                      )}
+                      {costPerformance >= 10 && costPerformance < 30 && (
+                        <p className="text-red-600 dark:text-red-400 font-semibold">
+                          劝退警告 📉:
+                          付出与回报严重失衡！建议把简历挂出去看看机会，别耽误青春。
+                        </p>
+                      )}
+                      {costPerformance >= 30 && costPerformance < 50 && (
+                        <p className="text-orange-600 dark:text-orange-400 font-semibold">
+                          忍辱负重 😩:
+                          食之无味，弃之可惜。为了生活，先忍着吧，记得按时下班。
+                        </p>
+                      )}
+                      {costPerformance >= 50 && costPerformance < 70 && (
+                        <p className="text-yellow-600 dark:text-yellow-400 font-semibold">
+                          勉强及格 🤷:
+                          不好不坏，比上不足比下有余。适合佛系躺平，偶尔摸鱼。
+                        </p>
+                      )}
+                      {costPerformance >= 70 && costPerformance < 90 && (
+                        <p className="text-lime-600 dark:text-lime-400 font-semibold">
+                          还算不错 👍:
+                          工作有点小盼头，性价比在线！继续努力，争取早日加薪！
+                        </p>
+                      )}
+                      {costPerformance >= 90 && costPerformance < 120 && (
+                        <p className="text-green-600 dark:text-green-400 font-semibold">
+                          小赚一笔 😏:
+                          可以啊！这班上得挺值当！工作舒心，钱包也还行，偷着乐吧！
+                        </p>
+                      )}
+                      {costPerformance >= 120 && costPerformance < 150 && (
+                        <p className="text-emerald-500 dark:text-emerald-400 font-semibold">
+                          人生赢家 😎:
+                          相当哇塞！别人是上班，你这是享受生活吧？求内推！
+                        </p>
+                      )}
+                      {costPerformance >= 150 && (
+                        <p className="text-cyan-500 dark:text-cyan-400 font-semibold">
+                          天选打工人 🙏:
+                          这是什么神仙工作？！请问贵司还缺人吗？我自带键盘！
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {costPerformance === 99999 && (
+                    <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">
+                      摸鱼之神 🏆:
+                      有效工时为负或零？你是懂时间管理的！摸鱼界的传奇！
+                    </p>
+                  )}
+                </div>
 
                 <p className="mt-2 text-indigo-500 dark:text-indigo-400 font-semibold">
                   如果你觉得这个
@@ -519,6 +656,22 @@ export default function Home() {
                   </Popover>
                 </div>
                 {/* --- End Coffee Popover Section --- */}
+
+                {/* Share Button */}
+                <div className="text-center">
+                  <p className="text-sm text-blue-600 dark:text-blue-400 font-medium mb-1">
+                    分享结果给朋友？✨
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShare}
+                    disabled={isSharing}
+                    className="text-xs border-blue-400 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                  >
+                    {isSharing ? "生成中..." : "分享截图"}
+                  </Button>
+                </div>
               </div>
             )}
           </CardFooter>
